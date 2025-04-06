@@ -1,0 +1,96 @@
+✅ Full Flow Breakdown:
+Step	Who	What Happens	Where
+🛒 User chooses plan & clicks Subscribe	Frontend (browser)	Sends a POST request with plan, email, and user ID	checkout/route.ts
+📦 Your backend creates Checkout Session	Your Next.js backend	Uses stripe.checkout.sessions.create() and returns a session.url	Stripe
+🚀 User is redirected to Stripe Checkout	Frontend → Stripe	User enters card details and confirms payment	Stripe UI
+✅ User completes payment	Stripe	Stripe triggers an event like checkout.session.completed	/api/webhook
+🔄 Your webhook handles the event	Your Next.js backend	Updates DB: sets subscriptionActive = true, saves stripeSubscriptionId, etc.	api/webhook/route.ts
+🏁 Subscription is active!	Your DB	User now has full access	🎉
+
+
+[ User signs up ]
+        ⬇️
+[ Clerk creates user ]
+        ⬇️
+[ Frontend calls /api/create-profile ]
+        ⬇️
+[ Backend (create-profile route) ]
+        ⬇️
+[ Prisma: Create user profile in DB ]
+        ✅ Profile created immediately
+🧠 No need for webhooks here because you already have access to the user's data after they sign up.
+
+
+💳 User Payment Flow (Stripe Webhook)
+[ User chooses a plan ]
+        ⬇️
+[ Frontend calls /api/checkout ]
+        ⬇️
+[ Stripe Checkout session is created ]
+        ⬇️
+[ User completes payment on Stripe ]
+        ⬇️
+[ Stripe triggers event → calls /api/webhook ]
+        ⬇️
+[ Webhook handler updates DB ]
+        ✅ Profile marked as "subscribed"
+🧠 You rely on Stripe's webhook to know when the payment is actually completed, failed, or canceled.
+
+
+
+🔻 handleInvoicePaymentFailed(invoice: Stripe.Invoice)
+📦 Triggered by:
+Stripe event: invoice.payment_failed
+
+🎯 Purpose:
+This means a recurring payment attempt (like a monthly charge) failed. Maybe the user’s card expired, or they don’t have funds.
+
+🛠 What it does:
+Gets the subscription ID from the invoice.
+
+Looks up the user by that subscription ID.
+
+Sets subscriptionActive = false in your database.
+
+✅ Real-world scenario:
+"User's card got declined this month, so we’re pausing access."
+
+🔻 handleCustomerSubscriptionDeleted(subscription: Stripe.Subscription)
+📦 Triggered by:
+Stripe event: customer.subscription.deleted
+
+🎯 Purpose:
+The subscription was fully canceled, either:
+
+Manually by the user,
+
+Programmatically by your system, or
+
+Automatically by Stripe (e.g., after repeated failed payments).
+
+🛠 What it does:
+Gets the subscription ID from the subscription object.
+
+Looks up the user.
+
+Resets everything:
+
+subscriptionActive = false
+
+subscriptionTier = null
+
+stripeSubscriptionId = null
+
+✅ Real-world scenario:
+"User canceled their subscription, or Stripe ended it. Wipe the sub info."
+
+🚨 Main Difference:
+handleInvoicePaymentFailed	handleCustomerSubscriptionDeleted
+Triggered by	Payment fails (e.g., card decline)	Subscription is canceled completely
+Clears sub ID?	❌ No	✅ Yes (stripeSubscriptionId = null)
+Resets tier info?	❌ No	✅ Yes (subscriptionTier = null)
+Deactivates access?	✅ Yes (subscriptionActive = false)	✅ Yes
+✅ Conclusion:
+Use handleInvoicePaymentFailed to pause access due to billing failure.
+
+Use handleCustomerSubscriptionDeleted to clean up the user's subscription data entirely.
