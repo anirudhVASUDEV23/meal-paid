@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+
 import OpenAI from "openai";
 
 const openai = new OpenAI({
@@ -6,7 +7,7 @@ const openai = new OpenAI({
   baseURL: "https://openrouter.ai/api/v1",
 });
 
-export async function POST(request: NextRequestRequest) {
+export async function POST(request: NextRequest) {
   try {
     const { dietType, calories, allergies, cuisine, snacks, days } =
       await request.json();
@@ -60,7 +61,7 @@ export async function POST(request: NextRequestRequest) {
     });
 
     const aiContent = response.choices[0].message.content?.trim() || "";
-    let parsedMealPlan: { [day: string]: DailMealPlan };//DailMealPlan is key-pair where it is pair
+    let parsedMealPlan: { [day: string]: DailMealPlan }; //DailMealPlan is key-pair where it is pair
     try {
       parsedMealPlan = JSON.parse(aiContent);
     } catch (error) {
@@ -70,13 +71,13 @@ export async function POST(request: NextRequestRequest) {
       );
     }
 
-    if(typeof parsedMealPlan !== "object" || parsedMealPlan===null){
-         return NextResponse.json(
+    if (typeof parsedMealPlan !== "object" || parsedMealPlan === null) {
+      return NextResponse.json(
         { error: "Failed to parse meal plan.Please try again" },
         { status: 500 }
       );
     }
-    return NextResponse.json({mealPlan:parsedMealPlan})
+    return NextResponse.json({ mealPlan: parsedMealPlan });
   } catch (error) {
     return NextResponse.json(
       { error: "Failed to generate meal plan" },
