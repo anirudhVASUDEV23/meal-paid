@@ -1,36 +1,51 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🥗 MealPlan Subscription App
 
-## Getting Started
+🔗 **Live Demo**: [https://meal-paid-pttb.vercel.app](https://meal-paid-pttb.vercel.app)
 
-First, run the development server:
+A full-stack subscription-based web application built with **Next.js (App Router)**, **Stripe** for secure recurring payments, and **Prisma ORM** for database access. Users can create profiles, choose meal plans, subscribe to a plan, and manage their subscription with ease.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+---
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🌟 Features
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 👤 User Account & Profile
+- Simple sign-up and profile creation
+- Auto-profile setup after login
+- Edit plan or unsubscribe anytime
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 💳 Stripe Subscriptions
+- Plan-based pricing with Stripe Checkout
+- Webhook integration to handle payments & cancellations
+- Handles checkout, subscription status, and updates securely
 
-## Learn More
+### 🍽️ Meal Plan Generator
+- Generate personalized meal plans (placeholder or AI integration)
+- Tied to subscription status — only subscribed users can access
 
-To learn more about Next.js, take a look at the following resources:
+### 🧭 Subscription Management
+- Check if a user has an active subscription
+- Change plans mid-cycle
+- Cancel subscription anytime
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### ⚙️ Serverless API Routes
+Built-in API routes under `app/api/`:
+- `checkout/`: Starts Stripe Checkout
+- `check-subscription/`: Checks user’s subscription status
+- `profile/`: Change plan, unsubscribe, and more
+- `generate-mealplan/`: Logic to produce meals (based on plan)
+- `webhook/`: Stripe webhook handler
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## 🧩 Tech Stack
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| Layer         | Tech                             |
+|---------------|----------------------------------|
+| **Frontend**  | Next.js(App Router),Tailwind CSS |
+| **Backend**   | API Routes (app/api), TypeScript |
+| **Payments**  | Stripe (Checkout + Webhooks)     |
+| **Database**  | PostgreSQL (via Prisma ORM)      |
+| **Auth**      | Clerk                            |
+| **State Mgmt**| React Query                      |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
