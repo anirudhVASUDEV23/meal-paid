@@ -1,25 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
+import { buffer } from "micro";
 import Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
-import { prisma } from "@/lib/prisma";
+import { prisma, waitForDb } from "@/lib/prisma";
+
+// ✅ Disable Next.js default body parsing (critical for raw buffer validation)
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
 
 export async function POST(request: NextRequest) {
-  const body = await request.text();
+  const rawBody = await request.arrayBuffer();
+  const bodyBuffer = Buffer.from(rawBody);
   const signature = request.headers.get("stripe-signature") || "";
 
   let event: Stripe.Event;
 
   try {
     event = stripe.webhooks.constructEvent(
-      body,
+      bodyBuffer,
       signature,
       process.env.STRIPE_WEBHOOK_SECRET!
     );
   } catch (error: any) {
+    console.error("Webhook signature verification failed:", error.message);
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
   try {
+    await waitForDb(); // ✅ Wake up Neon DB
+
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
@@ -27,21 +39,20 @@ export async function POST(request: NextRequest) {
         break;
       }
       case "invoice.payment_failed": {
-        const session = event.data.object as Stripe.Invoice;
-        await handleInvoicePaymentFailed(session);
+        const invoice = event.data.object as Stripe.Invoice;
+        await handleInvoicePaymentFailed(invoice);
         break;
       }
       case "customer.subscription.deleted": {
-        const session = event.data.object as Stripe.Subscription;
-        await handleCustomerSubscriptionDeleted(session);
+        const subscription = event.data.object as Stripe.Subscription;
+        await handleCustomerSubscriptionDeleted(subscription);
         break;
       }
-      default: {
+      default:
         console.log("Unhandled event type:", event.type);
-      }
     }
   } catch (error) {
-    console.log("Error handling event:", error);
+    console.error("Error processing event:", error);
     return NextResponse.json(
       { error: "Webhook handler failed" },
       { status: 500 }
@@ -55,24 +66,17 @@ async function handleCheckoutSessionCompleted(
   session: Stripe.Checkout.Session
 ) {
   const userId = session.metadata?.clerkUserId;
-  if (!userId) {
-    console.log("No userId found in metadata");
-    return;
-  }
-
   const subscriptionId = session.subscription as string;
-  if (!subscriptionId) {
-    console.log("No subscriptionId found in session");
+  const planType = session.metadata?.planType as string;
+
+  if (!userId || !subscriptionId) {
+    console.log("Missing userId or subscriptionId in session metadata.");
     return;
   }
-
-  const planType = session.metadata?.planType as string;
 
   await retryPrismaUpdate(async () => {
     await prisma.profile.update({
-      where: {
-        userId: userId,
-      },
+      where: { userId },
       data: {
         subscriptionActive: true,
         subscriptionTier: planType,
@@ -83,8 +87,7 @@ async function handleCheckoutSessionCompleted(
 }
 
 async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
-  const subId = (invoice as Stripe.Invoice & { subscription: string })
-    .subscription;
+  const subId = invoice.subscription;
   if (!subId) return;
 
   let userId: string | undefined;
@@ -119,7 +122,6 @@ async function handleCustomerSubscriptionDeleted(
   const subId = subscription.id;
   if (!subId) return;
 
-  let userId: string | undefined;
   try {
     const profile = await prisma.profile.findUnique({
       where: { stripeSubscriptionId: subId },
@@ -131,22 +133,19 @@ async function handleCustomerSubscriptionDeleted(
       return;
     }
 
-    userId = profile.userId;
+    await retryPrismaUpdate(async () => {
+      await prisma.profile.update({
+        where: { userId: profile.userId },
+        data: {
+          subscriptionActive: false,
+          subscriptionTier: null,
+          stripeSubscriptionId: null,
+        },
+      });
+    }, "CustomerSubscriptionDeleted");
   } catch (error) {
     console.log("Error fetching profile:", error);
-    return;
   }
-
-  await retryPrismaUpdate(async () => {
-    await prisma.profile.update({
-      where: { userId },
-      data: {
-        subscriptionActive: false,
-        subscriptionTier: null,
-        stripeSubscriptionId: null,
-      },
-    });
-  }, "CustomerSubscriptionDeleted");
 }
 
 async function retryPrismaUpdate(
@@ -158,6 +157,7 @@ async function retryPrismaUpdate(
   const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
   for (let i = 0; i < maxRetries; i++) {
     try {
+      await prisma.$queryRaw`SELECT 1`;
       await fn();
       console.log(`✅ ${context}: Prisma update successful.`);
       return;

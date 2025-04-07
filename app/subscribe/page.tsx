@@ -5,8 +5,7 @@ import { useUser } from "@clerk/nextjs";
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import React from "react";
-import { Toaster,toast } from "react-hot-toast";
-
+import { Toaster, toast } from "react-hot-toast";
 
 type SubscribeResponse = {
   url: string;
@@ -59,14 +58,49 @@ const Subscribe = () => {
       return subscribeToPlan(planType, userId, email);
     },
     onMutate: () => {
-      toast.loading("Processing your subscription")
+      toast.loading("Processing your subscription");
     },
     onSuccess: (data) => {
-      window.location.href = data.url;
+      window.location.href = data.url; //pushes us to stripe checkout page
+
+      /*
+      This onSuccess refers to:
+✅ A successful response from your API at /api/checkout.
+
+It means your backend successfully:
+
+Validated the request,
+
+Retrieved the correct Stripe price ID,
+
+Created a Stripe Checkout Session,
+
+Returned the session URL in data.url.
+
+❌ It does NOT mean:
+The user has completed the Stripe payment.
+
+The subscription has started.
+
+The user has been charged.
+
+That only happens after they go to Stripe and finish the checkout — at which point Stripe redirects them to your success_url.
+
+So in summary:
+onSuccess: Stripe session created successfully → redirect to Stripe.
+
+Stripe handles payment.
+
+On payment success → redirect to success_url.
+
+Then your app can handle any post-payment logic (optional).
+
+Let me know if you want help with verifying the payment on the success_url side!
+      */
     },
     onError: (error) => {
       toast.error("Something went wrong");
-    }
+    },
   });
 
   function handleSubscribe(planType: string) {
