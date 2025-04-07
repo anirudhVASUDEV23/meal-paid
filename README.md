@@ -2,6 +2,17 @@
 
 🔗 **Live Demo**: [https://meal-paid-pttb.vercel.app](https://meal-paid-pttb.vercel.app)
 
+⚠️ **Note**: This project is currently running in **Stripe Test Mode**. No real payments are processed.
+
+> Use the following **Stripe test card details** to simulate successful payments:
+
+Card Number: 4242 4242 4242 4242
+Expiry: Any future date (e.g., 12/34)
+CVC: Any 3 digits (e.g., 123)
+ZIP: Any 5-digit number (e.g., 10001)
+
+---
+
 A full-stack subscription-based web application built with **Next.js (App Router)**, **Stripe** for secure recurring payments, and **Prisma ORM** for database access. Users can create profiles, choose meal plans, subscribe to a plan, and manage their subscription with ease.
 
 ---
@@ -41,11 +52,10 @@ Built-in API routes under `app/api/`:
 
 | Layer         | Tech                             |
 |---------------|----------------------------------|
-| **Frontend**  | Next.js(App Router),Tailwind CSS |
+| **Frontend**  | Next.js (App Router),Tailwind CSS |
 | **Backend**   | API Routes (app/api), TypeScript |
 | **Payments**  | Stripe (Checkout + Webhooks)     |
 | **Database**  | PostgreSQL (via Prisma ORM)      |
 | **Auth**      | Clerk                            |
 | **State Mgmt**| React Query                      |
-
 
