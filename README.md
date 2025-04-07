@@ -1,6 +1,6 @@
 # 🥗 MealPlan Subscription App
 
-🔗 **Live Demo**: [https://meal-paid-pttb.vercel.app](https://meal-paid-pttb.vercel.app)
+🔗 **Live Demo**: [https://meal-paid-pttb.vercel.app](https://meal-paid-um59.vercel.app/)
 
 ⚠️ **Note**: This project is currently running in **Stripe Test Mode**. No real payments are processed.
 
