@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { buffer } from "micro";
 import Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
 import { prisma, waitForDb } from "@/lib/prisma";
 
-// ✅ Disable Next.js default body parsing (critical for raw buffer validation)
+// ✅ Disable body parsing for raw Stripe payload validation
 export const config = {
   api: {
     bodyParser: false,
@@ -30,7 +29,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    await waitForDb(); // ✅ Wake up Neon DB
+    await waitForDb();
 
     switch (event.type) {
       case "checkout.session.completed": {
@@ -39,7 +38,7 @@ export async function POST(request: NextRequest) {
         break;
       }
       case "invoice.payment_failed": {
-        const invoice = event.data.object as Stripe.Invoice;
+        const invoice = event.data.object as any; // 👈 workaround for TS type issue
         await handleInvoicePaymentFailed(invoice);
         break;
       }
@@ -86,7 +85,7 @@ async function handleCheckoutSessionCompleted(
   }, "CheckoutSessionCompleted");
 }
 
-async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
+async function handleInvoicePaymentFailed(invoice: any) {
   const subId = invoice.subscription;
   if (!subId) return;
 
@@ -157,7 +156,6 @@ async function retryPrismaUpdate(
   const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
   for (let i = 0; i < maxRetries; i++) {
     try {
-      await prisma.$queryRaw`SELECT 1`;
       await fn();
       console.log(`✅ ${context}: Prisma update successful.`);
       return;
